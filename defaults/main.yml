@@ -1,0 +1,43 @@
+---
+# defaults file for guestbook
+needed_packages:
+  - build-essential
+  - libssl-dev
+  - libyaml-dev
+  - git
+  - libcurl4-openssl-dev
+  - htop
+  - daemon
+
+ruby_version: 2.3.0
+
+option_install_nginx_passenger: true
+
+app_dependencies:
+  - libsqlite3-dev
+  - libpq-dev
+  - git
+  - nodejs
+  - npm
+
+app_directories:
+  - "{{app_base_dir}}"
+app_short_name: guestbook
+app_env: production
+app_domain: domain.local
+app_repository: https://github.com/askcharlie/guestbook.git
+app_base_dir: /var/www
+app_www_root: "{{app_base_dir}}/public"
+
+#app_redis_host: "redis://127.0.0.1:6379/16"
+app_redis_host: localhost
+app_db_host: localhost
+app_db_user: app_user
+app_db_password: app_password
+app_db_name: app_database    
+
+app_env_vars:
+  - {name: DATABASE_URL, value: "postgres://{{app_db_user}}:{{app_db_password}}@{{app_db_host}}/{{app_db_name}}"}
+  - {name: REDIS_HOST, value: "{{app_redis_host}}"}
+  - {name: RAILS_ENV, value: "{{app_env}}"}
+  - {name: DOMAIN_NAME, value: "{{app_domain}}"} 

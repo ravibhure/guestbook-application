@@ -1,0 +1,62 @@
+---
+  - name: Dependencies
+    apt: pkg={{ item }} state=present force="yes"  update_cache="yes"
+    when: ansible_system == "Linux"
+    with_items: "{{app_dependencies}}"
+
+  - name: Re-create base app directory
+    file: path={{app_base_dir}} state=absent
+
+  - name: Create directories
+    file: path={{item}} state=directory mode=0755
+    with_items: "{{app_directories}}"
+
+  - name: Checkout app without key
+    git: repo="{{app_repository}}" dest="{{app_base_dir}}" accept_hostkey="yes" force="yes"
+
+  - name: Install global rails gem
+    shell: gem install --no-rdoc --no-ri rails
+
+  - name: Install global rails gem
+    shell: gem install --no-rdoc --no-ri passenger
+
+  - name: Eliminate ruby req
+    lineinfile: dest="{{app_base_dir}}/Gemfile" regexp="^(\s*)*ruby" line="ruby '{{ruby_version}}'"
+
+  - name: Run bundle install
+    shell: bundle install
+    args:
+      chdir: "{{app_base_dir}}"
+
+  - name: DB Migrate
+    shell: bundle exec rake db:migrate
+    args:
+      chdir: "{{app_base_dir}}"
+    environment:
+      RAILS_ENV: "{{app_env}}"
+      DATABASE_URL: "postgres://{{app_db_user}}:{{app_db_password}}@{{app_db_host}}/{{app_db_name}}"
+      REDIS_HOST: "{{app_redis_host}}"
+      DOMAIN_NAME: "{{app_domain}}"
+
+  - name: GuestBook App UP
+    shell: "bundle exec rackup -s Puma --host 0.0.0.0"
+    args:
+      chdir: "{{app_base_dir}}"
+    environment:
+      RAILS_ENV: "{{app_env}}"
+      DATABASE_URL: "postgres://{{app_db_user}}:{{app_db_password}}@{{app_db_host}}/{{app_db_name}}"
+      REDIS_HOST: "{{app_redis_host}}"
+      DOMAIN_NAME: "{{app_domain}}"
+    when: not option_install_nginx_passenger
+
+  - name: Nginx conf
+    template: src="nginx_app.conf.j2" dest="/etc/nginx/sites-enabled/{{app_short_name}}.conf"
+    when: option_install_nginx_passenger
+
+  - name: Passenger conf
+    template: src="passenger.conf.j2" dest="/etc/nginx/passenger.conf"
+    when: option_install_nginx_passenger
+
+  - name: Nginx | Reload
+    service: name=nginx state=reloaded
+    when: option_install_nginx_passenger

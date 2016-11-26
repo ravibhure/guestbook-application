@@ -1,0 +1,12 @@
+---
+# tasks file for application
+  - debug: msg="Tasks section"
+
+  - name: Playbook | package dependencies + cache update
+    apt: pkg={{ item }} state=present force="yes"  update_cache="yes"
+    with_items: "{{needed_packages}}"
+
+  - include: 'nginx_passenger.yml'
+    when: option_install_nginx_passenger
+
+  - include: 'ruby_app.yml'
